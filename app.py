@@ -70,6 +70,7 @@ def state_populator(state):
 def plot_summary_by_chapter(state):
     print('\nGenerating chapter-by-chapter plot summary.\n')
 
+    num_plot_outline_words = len(state['plot_outline'].split())
     chapter_summary_prompt = f"""
         You are writing a book with this plot summary: {state['plot_outline']}. The book is {state['desired_pages']} pages 
         long. Write a specific and detailed plot summary for each of the {state['num_chapters']} chapters of the book. 
@@ -77,11 +78,11 @@ def plot_summary_by_chapter(state):
         Name any unnamed major or minor characters. Use the first few chapter summaries to introduce the characters 
         and set the story. Use the next few chapter summaries for action and character development. Use the last 
         few chapters for dramatic twists in the plot and conclusion. You have 
-        {state['model']['token_limit'] - (state['plot_outline'].length + 500 + state['pad_amount'])} tokens (or words) 
+        {state['model']['token_limit'] - (num_plot_outline_words + 500 + state['pad_amount'])} tokens (or words) 
         left for the summaries. Try to use all the words you have available. 
     """
 
-    chapter_summary_text = ask_openai(chapter_summary_prompt, 'writer', state['model']['name'], (state['model']['token_limit'] - (state['plot_outline'].length + state['pad_amount'])), 0.9)
+    chapter_summary_text = ask_openai(chapter_summary_prompt, 'writer', state['model']['name'], (state['model']['token_limit'] - (num_plot_outline_words + state['pad_amount'])), 0.9)
     chapter_summary_text = chapter_summary_text.choices[0].message.content
     # chapterSummaryText = chapterSummaryText.split(/\n/).filter((x) => x.length > 5);
     print("Chapter-By-Chapter Plot Summary:\n")
@@ -98,7 +99,8 @@ def chapter_summary_array(state):
         short_summary_text = ""
 
         print(f"\nGenerating chapter summary for chapter {i + 1}...\n")
-
+        num_plot_outline_words = len(state['plot_outline'].split())
+        num_chapter_by_chapter_summary_words = len(state['chapter_by_chapter_summary_string'].split())
         chapter_summary_prompt = f"""
         You are writing a summary of chapter {i+1} of a {state['num_chapters']} chapter {state['plot_genre']} book. 
         The entire plot summary is {state['plot_outline']} 
@@ -107,11 +109,11 @@ def chapter_summary_array(state):
         you may add new subplots, character development, character background, planned dialogue and plot development 
         that you would typically find in such a work. You are NOT writing the actual book right now, you are writing 
         an outline and summary of what will happen in this chapter. 
-        You have to write {state['model']['token_limit'] - (500 + state['plot_outline'] + state['chapter_by_chapter_summary_string'].length + state['pad_amount'])} words.`
+        You have to write {state['model']['token_limit'] - (500 + num_plot_outline_words + num_chapter_by_chapter_summary_words + state['pad_amount'])} words.`
         """
         
 
-        short_summary_text = ask_openai(chapter_summary_prompt, 'writer', state['model']['name'], (state['model']['token_limit'] - (state['plot_outline'].length + state['pad_amount'])), 0.9)
+        short_summary_text = ask_openai(chapter_summary_prompt, 'writer', state['model']['name'], (state['model']['token_limit'] - (num_plot_outline_words + state['pad_amount'])), 0.9)
         short_summary_text = short_summary_text.choices[0].message.content
         state['chapter_summary_array'].append(short_summary_text)
         chapter_summary = chapter_summary.choices[0].message.content
