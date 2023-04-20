@@ -181,7 +181,7 @@ if __name__ == "__main__":
     parser.add_argument('--pages', default=200, help='Approximatly how many pages to generate')
     parser.add_argument('--pad_amount', default=500, help='')
     parser.add_argument('--genre', default='', help='Which genre to use')
-    parser.add_argument('--start_after', default='', help='outline, state, chapter_by_chapter_summary_string, chapter_summary_array, page_summaries')
+    parser.add_argument('--start_with', default='', help='outline, state, chapter_by_chapter_summary_string, chapter_summary_array, page_summaries')
     parser.add_argument('--folder', default='', help='Which folder stores the current story.')
     args = parser.parse_args()
 
@@ -235,19 +235,16 @@ if __name__ == "__main__":
             sys.exit(1)
 
         ### STATE
-        if args.start_after in ['outline', 'state', 'chapter_by_chapter_summary_string', 'chapter_summary_array']:
-            # IF STATE EXISTS, LOAD IT
+        if args.start_with in ['chapter_by_chapter_summary_string', 'chapter_summary_array', 'page_summaries']:
             with open(f"{state['filename']}/state.json", "r") as f:
                 state = json.load(f)
-                print(state)
         else:
-            # IF STATE DOES NOT EXIST, GENERATE IT
             state['raw_outline'] = outline_generator(state)
             state = state_populator(state)
   
 
         ### CHAPTER BY CHAPTER SUMMARY STRING
-        if args.start_after in ['state', 'chapter_by_chapter_summary_string', 'chapter_summary_array']:
+        if args.start_with in ['chapter_summary_array', 'page_summaries']:
             with open(f"{state['filename']}/chapter_summary.txt", "r") as f:
                 state['chapter_by_chapter_summary_string'] = f.read()
         else:
@@ -255,7 +252,7 @@ if __name__ == "__main__":
 
 
         ### CHAPTER SUMMARY ARRAY
-        if args.start_after in ['chapter_by_chapter_summary_string', 'chapter_summary_array']:
+        if args.start_with in ['page_summaries']:
             # LOAD ALL FILES THAT FIT THE PATTERN
             with open(f"{state['filename']}/chapter_summary.txt", "r") as f:
                 state['chapter_summary_array'] = f.read()
@@ -263,14 +260,10 @@ if __name__ == "__main__":
             state['chapter_summary_array'] = chapter_summary_array(state)
 
 
-        ### PAGE SUMMARIES
-        if args.start_after in ['chapter_summary_array']:
-            # LOAD ALL FILES THAT FIT THE PATTERN
-            with open(f"{state['filename']}/chapter_summary.txt", "r") as f:
-                state['page_summaries'] = f.read()
-        else:
-            state['page_summaries'] = page_generator(state)
-            output_to_file(False, state["page_summaries"], f"{state['filename']}/page_summaries.txt")
+        ### PAGE SUMMARIES:
+        # SINCE PAGE SUMMARIES IS LAST WE SHOULD ALWAYS DO IT
+        state['page_summaries'] = page_generator(state)
+        output_to_file(False, state["page_summaries"], f"{state['filename']}/page_summaries.txt")
 
 
     # 1. Identify what the main theme or plot of the novel is going to be
