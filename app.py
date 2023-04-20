@@ -24,7 +24,7 @@ def get_random_genre():
     print("Genre is:", random_genre)
     return random_genre
 
-def outline_generator(state, padAmount):
+def outline_generator(state):
     outline_prompt =  f"""
         Generate the outline of an original {state['desired_pages']}-page {state['plot_genre']} fiction book. 
         Imagine and then carefully label the following: a detailed plot, characters with names, settings 
@@ -33,7 +33,7 @@ def outline_generator(state, padAmount):
         """
     print("Generating Outline...")
 
-    outline = ask_openai(outline_prompt, 'writer', state['model']['name'], (state['model']['token_limit'] - (40 + padAmount)), 0.9)
+    outline = ask_openai(outline_prompt, 'writer', state['model']['name'], (state['model']['token_limit'] - (40 + state['pad_amount'])), 0.9)
 
     outline = outline.choices[0].message.content
     print("Here is the raw outline:\n")
@@ -54,7 +54,7 @@ def state_populator(state):
     for (key, value) in items_to_populate.items():
         state_populator_prompt = f"""
             I'm going to give you the outline of a book. From this outline, tell me the {value}. 
-            Use close to {models['tokenLimit'] - (500 + state['raw_outline'] + state['pad_amount'])} words for this page. Here is the outline: {state.raw_outline}`
+            Use close to {models['token_limit'] - (500 + state['raw_outline'] + state['pad_amount'])} words for this page. Here is the outline: {state.raw_outline}`
         """
 
         state_populator_result = ask_openai(state_populator_prompt, 'machine', state['model']['name'], (state['model']['token_limit'] - (len(state['raw_outline']) + state['pad_amount'])), 0.9)
@@ -77,7 +77,7 @@ def plot_summary_by_chapter(state):
         Name any unnamed major or minor characters. Use the first few chapter summaries to introduce the characters 
         and set the story. Use the next few chapter summaries for action and character development. Use the last 
         few chapters for dramatic twists in the plot and conclusion. You have 
-        {state['model']['tokenLimit'] - (state['plot_outline'].length + 500 + state['pad_amount'])} tokens (or words) 
+        {state['model']['token_limit'] - (state['plot_outline'].length + 500 + state['pad_amount'])} tokens (or words) 
         left for the summaries. Try to use all the words you have available. 
     """
 
@@ -219,7 +219,7 @@ if __name__ == "__main__":
     state['raw_outline'] = outline_generator(state)
     state = state_populator(state)
     state['chapter_by_chapter_summary_string'] = plot_summary_by_chapter(state)
-    state['chapter_summary_array'] = chapter_summary_array(state)
+    # state['chapter_summary_array'] = chapter_summary_array(state)
     # state['page_summaries'] = page_generator(state)
     # output_to_file(False, state["page_summaries"], f"{state['filename']}.txt")
 
