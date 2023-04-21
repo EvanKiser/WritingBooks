@@ -93,16 +93,15 @@ def plot_summary_by_chapter(state):
 
 def chapter_summary_array(state):
     print("Generating chapter summary array...\n")
-    
+
     for i in range(0, state['num_chapters']):
 
-        short_summary_text = ""
-
         print(f"\nGenerating chapter summary for chapter {i + 1}...\n")
+
         num_plot_outline_words = len(state['plot_outline'].split())
         num_chapter_by_chapter_summary_words = len(state['chapter_by_chapter_summary_string'].split())
         chapter_summary_prompt = f"""
-        You are writing a summary of chapter {i+1} of a {state['num_chapters']} chapter {state['plot_genre']} book. 
+        You are writing a summary of chapter {i+1} of a {state['num_chapters']} chapters {state['plot_genre']} book. 
         The entire plot summary is {state['plot_outline']} 
         The chapter-by-chapter summary for the entire book is: \n{state['chapter_by_chapter_summary_string']}\n 
         Using those summaries, write a several page summary of only chapter {i+1}. Write the best summary you can, 
@@ -113,12 +112,11 @@ def chapter_summary_array(state):
         """
         
 
-        short_summary_text = ask_openai(chapter_summary_prompt, 'writer', state['model']['name'], (state['model']['token_limit'] - (num_plot_outline_words + state['pad_amount'])), 0.9)
-        short_summary_text = short_summary_text.choices[0].message.content
-        state['chapter_summary_array'].append(short_summary_text)
+        chapter_summary = ask_openai(chapter_summary_prompt, 'writer', state['model']['name'], (state['model']['token_limit'] - (num_plot_outline_words + num_chapter_by_chapter_summary_words + state['pad_amount'])), 0.9)
         chapter_summary = chapter_summary.choices[0].message.content
+        state['chapter_summary_array'].append(chapter_summary)
         # chapterSummary = chapterSummary.split(/\n/).filter((x) => x.length > 5);
-        print(f"\nChapter {i} Summary:")
+        print(f"\nChapter {i+1} Summary:")
         print(chapter_summary)
         output_to_file(False, chapter_summary, f"{state['filename']}/{'chapter_summary_'}{i + 1}.txt")
     
@@ -126,8 +124,8 @@ def chapter_summary_array(state):
     
 def page_generator(state):
     print("\nEntering Page Generation module.\n")
-    for i in range(0, len(state['num_chapters'])):
-        for j in range(0, len(state['chapter_length'])):
+    for i in range(0, state['num_chapters']):
+        for j in range(0, state['chapter_length']):
             amendment = create_page_query_amendment(state, i, j);
             print(f"\nGenerating final full text for chapter {i+1} page {j+1}\n");
             page_gen_prompt = f"""
@@ -140,18 +138,32 @@ def page_generator(state):
             """
             page_gen_text = ask_openai(page_gen_prompt, 'writer', state['model']['name'], (state['model']['token_limit'] - (len(state['plot_outline']) + state['pad_amount'])), 0.9)
             page_gen_text = page_gen_text.choices[0].message.content
-            state['full_text'].append((page_gen_text, "\n"))
+            state['full_text'].append(page_gen_text)
             header = f"\n\nChapter {i+1}, Page {j+1}\n\n"
             text_to_save = header + page_gen_text
-            output_to_file(False, text_to_save, f"{state['filename']}/{'chapter_'}{i+1}_page_{j+1}.txt")
+            os.makedirs(f"{state['filename']}/pages", exist_ok=True)
+            output_to_file(False, text_to_save, f"{state['filename']}/pages/{'chapter_'}{i+1}_page_{j+1}.txt")
+            
+            page_summary = generate_page_summary(state['full_text'][-1])
+            state['page_summaries'].append(page_summary)
+    return state['full_text'], state['page_summaries']
+
+def generate_page_summary(page):
+    page_summary_prompt = f"""
+        Here is a full page of text. Please summarize it in a few sentences. 
+        Text to summarize: ${page}
+        """
+    page_summary = ask_openai(page_summary_prompt, 'writer', state['model']['name'], (state['model']['token_limit'] - (len(page.strip()) + state['pad_amount'])), 0.5)
+    page_summary = page_summary.choices[0].message.content
+    return page_summary
 
 def create_page_query_amendment(state, chapter, page):
     if page == 0:
         return "You are writing the first page of the chapter"
     elif page == 1 and state['model']['name'] == 'gpt-4-0314':
-        return f"Page 1 of this chapter reads as follows: \n{state['fullText'][(chapter *state['chapter_length'] + page-2)]}\n"
+        return f"Page 1 of this chapter reads as follows: \n{state['full_text'][(chapter * state['chapter_length'] + page-2)]}\n"
     elif page == 2 and state['model']['name'] == 'gpt-4-0314':
-        return f"Page {page-1} of this chapter reads as follows: \n{state['fullText'][(chapter *state['chapter_length'] + page-2)]}\n"
+        return f"Page {page-1} of this chapter reads as follows: \n{state['full_text'][(chapter *state['chapter_length'] + page-2)]}\n"
     
     prior_pages = '';
 
@@ -201,7 +213,7 @@ if __name__ == "__main__":
     state = {
         "desired_pages": args.pages,
         "chapter_length": args.chapter_length,
-        "num_chapters": args.pages / args.chapter_length,
+        "num_chapters": int(args.pages / args.chapter_length),
         "plot_genre": '',
         "raw_outline": '',
         "plot_outline": '',
@@ -226,7 +238,7 @@ if __name__ == "__main__":
         state = state_populator(state)
         state['chapter_by_chapter_summary_string'] = plot_summary_by_chapter(state)
         state['chapter_summary_array'] = chapter_summary_array(state)
-        state['page_summaries'] = page_generator(state)
+        state['full_text'] = page_generator(state)
         output_to_file(False, state["page_summaries"], f"{state['filename']}/page_summaries.txt")
     else:
 
@@ -264,8 +276,8 @@ if __name__ == "__main__":
 
         ### PAGE SUMMARIES:
         # SINCE PAGE SUMMARIES IS LAST WE SHOULD ALWAYS DO IT
-        state['page_summaries'] = page_generator(state)
-        output_to_file(False, state["page_summaries"], f"{state['filename']}/page_summaries.txt")
+        state['full_text'], state['page_summaries'] = page_generator(state)
+        # output_to_file(False, state["page_summaries"], f"{state['filename']}/page_summaries.txt")
 
 
     # 1. Identify what the main theme or plot of the novel is going to be
