@@ -30,7 +30,7 @@ def outline_generator(state):
         Generate the outline of an original {state['desired_pages']}-page {state['plot_genre']} fiction book. 
         Imagine and then carefully label the following: a detailed plot, characters with names, settings 
         and writing style. You have {state['model']['token_limit'] - (40 + state['pad_amount'])} words remaining to write the outline. 
-        It is CRITICAL you as many words as possible.
+        It is CRITICAL you as many words as possible. DO NOT create a title!
         """
     print("Generating Outline...")
 
@@ -42,7 +42,7 @@ def outline_generator(state):
     return outline
 
 def state_populator(state):
-    print("Populating state from raw outline...\n")
+    print("\nPopulating state from raw outline...\n")
 
     items_to_populate = {
         'plot_outline': 'plot',
@@ -50,6 +50,7 @@ def state_populator(state):
         'minor_characters': 'minor characters list',
         'writing_style': 'writing style',
         'writing_adjectives': 'writing adjectives',
+        'title': 'title',
     }
 
     for (key, value) in items_to_populate.items():
@@ -65,7 +66,10 @@ def state_populator(state):
         state[key] = state_populator_result
         print("\nHere is the", value, ":\n", state[key])
 
+    state['filename'] = state['title']
+    os.makedirs(state['filename'], exist_ok=True)
     output_to_file(True, state, f"{state['filename']}/{'state.json'}")
+    return state
 
 def plot_summary_by_chapter(state):
     print('\nGenerating chapter-by-chapter plot summary.\n')
@@ -91,10 +95,10 @@ def plot_summary_by_chapter(state):
     
     return chapter_summary_text
 
-def chapter_summary_array(state):
+def chapter_summary_array(state, starting_chapter=0):
     print("Generating chapter summary array...\n")
 
-    for i in range(0, state['num_chapters']):
+    for i in range(starting_chapter, state['num_chapters']):
 
         print(f"\nGenerating chapter summary for chapter {i + 1}...\n")
 
@@ -191,8 +195,8 @@ if __name__ == "__main__":
     # Create an ArgumentParser object
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', default='gpt4', help='Which openai model to use')
-    parser.add_argument('--chapter_length', default=20, help='How many pages each chapter should be')
-    parser.add_argument('--pages', default=200, help='Approximatly how many pages to generate')
+    parser.add_argument('--chapter_length', default=10, help='How many pages each chapter should be')
+    parser.add_argument('--pages', default=100, help='Approximatly how many pages to generate')
     parser.add_argument('--pad_amount', default=500, help='')
     parser.add_argument('--genre', default='', help='Which genre to use')
     parser.add_argument('--start_with', default='', help='outline, state, chapter_by_chapter_summary_string, chapter_summary_array, page_summaries')
@@ -211,6 +215,7 @@ if __name__ == "__main__":
     }
 
     state = {
+        "title": '',
         "desired_pages": args.pages,
         "chapter_length": args.chapter_length,
         "num_chapters": int(args.pages / args.chapter_length),
@@ -232,16 +237,14 @@ if __name__ == "__main__":
     }
     state['plot_genre'] = get_random_genre() if args.genre == '' else args.genre
     if not args.folder:
-        state['filename'] = f"{state['plot_genre']}_{args.model}_{random.randint(0,100)}"
-        os.makedirs(state['filename'], exist_ok=True)
         state['raw_outline'] = outline_generator(state)
         state = state_populator(state)
         state['chapter_by_chapter_summary_string'] = plot_summary_by_chapter(state)
         state['chapter_summary_array'] = chapter_summary_array(state)
         state['full_text'] = page_generator(state)
         output_to_file(False, state["page_summaries"], f"{state['filename']}/page_summaries.txt")
+    
     else:
-
         ### Check if given folder exists
         state['filename'] = args.folder
         if not os.path.exists(state['filename']):
@@ -251,6 +254,7 @@ if __name__ == "__main__":
         ### STATE
         if args.start_with in ['chapter_by_chapter_summary_string', 'chapter_summary_array', 'page_summaries']:
             with open(f"{state['filename']}/state.json", "r") as f:
+                print(f"Loading {state['filename']}/state.json")
                 state = json.load(f)
         else:
             state['raw_outline'] = outline_generator(state)
@@ -260,18 +264,25 @@ if __name__ == "__main__":
         ### CHAPTER BY CHAPTER SUMMARY STRING
         if args.start_with in ['chapter_summary_array', 'page_summaries']:
             with open(f"{state['filename']}/chapter_summary.txt", "r") as f:
+                print(f"Loading: Chapter By Chapter Summary")
                 state['chapter_by_chapter_summary_string'] = f.read()
         else:
             state['chapter_by_chapter_summary_string'] = plot_summary_by_chapter(state)
 
 
         ### CHAPTER SUMMARY ARRAY
+        starting_chapter=0
         if args.start_with in ['page_summaries']:
-            # LOAD ALL FILES THAT FIT THE PATTERN
-            with open(f"{state['filename']}/chapter_summary.txt", "r") as f:
-                state['chapter_summary_array'] = f.read()
-        else:
-            state['chapter_summary_array'] = chapter_summary_array(state)
+            for i in range(state['num_chapters']):
+                if os.path.exists(f"{state['filename']}/chapter_summary_{i+1}.txt"):
+                    with open(f"{state['filename']}/chapter_summary_{i+1}.txt", "r") as f:
+                        print(f"Loading: Chapter {i+1}")
+                        state['chapter_summary_array'].append(f.read())
+                else:
+                    starting_chapter=i
+                    break
+        if len(state['chapter_summary_array']) != state['num_chapters']:
+            state['chapter_summary_array'] = chapter_summary_array(state, starting_chapter)
 
 
         ### PAGE SUMMARIES:
