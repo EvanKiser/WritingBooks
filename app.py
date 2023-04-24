@@ -121,10 +121,10 @@ def chapter_summary_array(state, starting_chapter=0):
     
     return state['chapter_summary_array']    
     
-def page_generator(state):
+def page_generator(state, starting_chapter=0, starting_page=0):
     print("\nEntering Page Generation module.\n")
-    for i in range(0, state['num_chapters']):
-        for j in range(0, state['chapter_length']):
+    for i in range(starting_chapter, state['num_chapters']):
+        for j in range(starting_page, state['chapter_length']):
             amendment = create_page_query_amendment(state, i, j);
             print(f"\nGenerating final full text for chapter {i+1} page {j+1}\n");
             page_gen_prompt = f"""
@@ -135,7 +135,7 @@ def page_generator(state):
                 jump to the end of the plot and make sure there is plot continuity. Carefully read the summaries of the prior 
                 pages before writing new plot. Make sure you fill an entire page of writing.`
             """
-            page_gen_text = ask_openai(page_gen_prompt, 'writer', state['model']['name'], (state['model']['token_limit'] - (len(state['plot_outline']) + state['pad_amount'])), 0.9)
+            page_gen_text = ask_openai(page_gen_prompt, 'writer', state['model']['name'], (state['model']['token_limit'] - len(page_gen_prompt.split()) - state['pad_amount'] - 400), 0.9)
             page_gen_text = page_gen_text.choices[0].message.content
             state['full_text'].append(page_gen_text)
             header = f"\n\nChapter {i+1}, Page {j+1}\n\n"
@@ -286,6 +286,7 @@ if __name__ == "__main__":
         # SINCE PAGE SUMMARIES IS LAST WE SHOULD ALWAYS DO IT
         starting_chapter = 0
         starting_page = 0
+        should_we_break_it = False
         for chapter in range(state['num_chapters']):
             for page in range(state['chapter_length']):
                 if os.path.exists(f"{state['filename']}/pages/chapter_{chapter+1}_page_{page+1}.txt"):
@@ -300,8 +301,11 @@ if __name__ == "__main__":
                 else:
                     starting_chapter = chapter
                     starting_page = page
+                    should_we_break_it = True
                     break
-        state['full_text'], state['page_summaries'] = page_generator(state)
+            if should_we_break_it:
+                break
+        state['full_text'], state['page_summaries'] = page_generator(state, starting_chapter, starting_page)
 
 
     # 1. Identify what the main theme or plot of the novel is going to be
