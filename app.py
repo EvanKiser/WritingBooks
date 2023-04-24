@@ -135,7 +135,7 @@ def page_generator(state, starting_chapter=0, starting_page=0):
                 jump to the end of the plot and make sure there is plot continuity. Carefully read the summaries of the prior 
                 pages before writing new plot. Make sure you fill an entire page of writing.`
             """
-            page_gen_text = ask_openai(page_gen_prompt, 'writer', state['model']['name'], (state['model']['token_limit'] - len(page_gen_prompt.split()) - state['pad_amount'] - 400), 0.9)
+            page_gen_text = ask_openai(page_gen_prompt, 'writer', state['model']['name'], (state['model']['token_limit'] - len(page_gen_prompt.split()) - state['pad_amount'] - 520), 0.9)
             page_gen_text = page_gen_text.choices[0].message.content
             state['full_text'].append(page_gen_text)
             header = f"\n\nChapter {i+1}, Page {j+1}\n\n"
@@ -147,6 +147,7 @@ def page_generator(state, starting_chapter=0, starting_page=0):
             state['page_summaries'].append(page_summary)
             os.makedirs(f"{state['filename']}/page_summaries", exist_ok=True)
             output_to_file(False, page_summary, f"{state['filename']}/page_summaries/summary_chapter_{i+1}_page_{j+1}.txt")
+        starting_page=0
     return state['full_text'], state['page_summaries']
 
 def generate_page_summary(page):
