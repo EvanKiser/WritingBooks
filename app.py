@@ -37,8 +37,8 @@ def outline_generator(state):
     outline = ask_openai(outline_prompt, 'writer', state['model']['name'], (state['model']['token_limit'] - (40 + state['pad_amount'])), 0.9)
 
     outline = outline.choices[0].message.content
-    print("Here is the raw outline:\n")
-    print(outline)
+    # print("Here is the raw outline:\n")
+    # print(outline)
     return outline
 
 def state_populator(state):
@@ -64,7 +64,6 @@ def state_populator(state):
         state_populator_result = state_populator_result.choices[0].message.content;
         
         state[key] = state_populator_result
-        print("\nHere is the", value, ":\n", state[key])
 
     state['filename'] = state['title']
     os.makedirs(state['filename'], exist_ok=True)
@@ -89,8 +88,6 @@ def plot_summary_by_chapter(state):
     chapter_summary_text = ask_openai(chapter_summary_prompt, 'writer', state['model']['name'], (state['model']['token_limit'] - (num_plot_outline_words + state['pad_amount'])), 0.9)
     chapter_summary_text = chapter_summary_text.choices[0].message.content
     # chapterSummaryText = chapterSummaryText.split(/\n/).filter((x) => x.length > 5);
-    print("Chapter-By-Chapter Plot Summary:\n")
-    print(chapter_summary_text)
     output_to_file(False, chapter_summary_text, f"{state['filename']}/{'chapter_summary.txt'}")
     
     return chapter_summary_text
@@ -120,8 +117,6 @@ def chapter_summary_array(state, starting_chapter=0):
         chapter_summary = chapter_summary.choices[0].message.content
         state['chapter_summary_array'].append(chapter_summary)
         # chapterSummary = chapterSummary.split(/\n/).filter((x) => x.length > 5);
-        print(f"\nChapter {i+1} Summary:")
-        print(chapter_summary)
         output_to_file(False, chapter_summary, f"{state['filename']}/{'chapter_summary_'}{i + 1}.txt")
     
     return state['chapter_summary_array']    
@@ -146,10 +141,12 @@ def page_generator(state):
             header = f"\n\nChapter {i+1}, Page {j+1}\n\n"
             text_to_save = header + page_gen_text
             os.makedirs(f"{state['filename']}/pages", exist_ok=True)
-            output_to_file(False, text_to_save, f"{state['filename']}/pages/{'chapter_'}{i+1}_page_{j+1}.txt")
+            output_to_file(False, text_to_save, f"{state['filename']}/pages/chapter_{i+1}_page_{j+1}.txt")
             
             page_summary = generate_page_summary(state['full_text'][-1])
             state['page_summaries'].append(page_summary)
+            os.makedirs(f"{state['filename']}/page_summaries", exist_ok=True)
+            output_to_file(False, page_summary, f"{state['filename']}/page_summaries/summary_chapter_{i+1}_page_{j+1}.txt")
     return state['full_text'], state['page_summaries']
 
 def generate_page_summary(page):
@@ -287,8 +284,24 @@ if __name__ == "__main__":
 
         ### PAGE SUMMARIES:
         # SINCE PAGE SUMMARIES IS LAST WE SHOULD ALWAYS DO IT
+        starting_chapter = 0
+        starting_page = 0
+        for chapter in range(state['num_chapters']):
+            for page in range(state['chapter_length']):
+                if os.path.exists(f"{state['filename']}/pages/chapter_{chapter+1}_page_{page+1}.txt"):
+                    # Load Pages
+                    with open(f"{state['filename']}/pages/chapter_{chapter+1}_page_{page+1}.txt", "r") as f:
+                        print(f"Loading: Chapter {chapter+1}, Page {page+1}")
+                        state['full_text'].append(f.read())
+                    # Load Summaries
+                    with open(f"{state['filename']}/page_summaries/summary_chapter_{chapter+1}_page_{page+1}.txt", "r") as f:
+                        print(f"Loading: Summary {chapter+1}, Page {page+1}")
+                        state['page_summaries'].append(f.read())
+                else:
+                    starting_chapter = chapter
+                    starting_page = page
+                    break
         state['full_text'], state['page_summaries'] = page_generator(state)
-        # output_to_file(False, state["page_summaries"], f"{state['filename']}/page_summaries.txt")
 
 
     # 1. Identify what the main theme or plot of the novel is going to be
