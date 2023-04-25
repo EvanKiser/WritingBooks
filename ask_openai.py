@@ -31,8 +31,8 @@ def ask_openai(prompt, role, model_choice='gpt-3.5-turbo', tokens=5000, temp=0.8
                 temperature=temp,
                 max_tokens=tokens,
             )
-        except requests.exceptions.Timeout:
-            print("Timeout occurred. Retrying in {} seconds...".format(2 ** retries))
+        except openai.error.Timeout:
+            print("Timeout occurred. Retrying in {} seconds...".format(2 ** num_retries))
             num_retries += 1
             time.sleep(2 ** num_retries)
     if num_retries > max_retry:
