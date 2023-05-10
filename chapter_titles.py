@@ -27,11 +27,9 @@ def get_random_genre():
 
 def outline_generator(state):
     outline_prompt =  f"""
-        Generate the outline of an original {state['desired_pages']}-page erotic fiction novel. 
+        Generate the outline of an original {state['desired_pages']}-page {state['plot_genre']} fiction book. 
         Imagine and then carefully label the following: a detailed plot, characters with names, settings 
-        and writing style. The writing style should be in the style of the author Cooleen Hoover. The plot 
-        should include lots of sexual interactions between many different characters. You have 
-        {state['model']['token_limit'] - (40 + state['pad_amount'])} words remaining to write the outline. 
+        and writing style. You have {state['model']['token_limit'] - (40 + state['pad_amount'])} words remaining to write the outline. 
         It is CRITICAL you as many words as possible. DO NOT create a title!
         """
     print("Generating Outline...")
@@ -39,8 +37,8 @@ def outline_generator(state):
     outline = ask_openai(outline_prompt, 'writer', state['model']['name'], (state['model']['token_limit'] - (40 + state['pad_amount'])), 0.9)
 
     outline = outline.choices[0].message.content
-    print("Here is the raw outline:\n")
-    print(outline)
+    # print("Here is the raw outline:\n")
+    # print(outline)
     return outline
 
 def state_populator(state):
@@ -236,127 +234,31 @@ if __name__ == "__main__":
         'pad_amount': args.pad_amount,
     }
     state['plot_genre'] = get_random_genre() if args.genre == '' else args.genre
-    if not args.folder:
-        # state['raw_outline'] = outline_generator(state)
-        outline = """
-        I. Setting
-            - The story takes place in the picturesque coastal city of Haven Bay, known for its beautiful beaches, vibrant art scene, and quaint local shops.
+    ### Check if given folder exists
+    state['filename'] = args.folder
+    if not os.path.exists(state['filename']):
+        print(f"Folder {state['filename']} does not exist")
+        sys.exit(1)
 
-        II. Main Characters
-            1. Emma Thompson: A talented painter in her late 20s who is secretive about her past and struggles with trust.
-            2. Jack Reynolds: A charming and successful writer in his early 30s, who is dealing with unresolved trauma and commitment issues.
-            3. Layla Davis: A free-spirited and adventurous photographer and Emma's best friend, who is navigating her own journey of self-discovery.
+    ### STATE
+    with open(f"{state['filename']}/state.json", "r") as f:
+        print(f"Loading {state['filename']}/state.json")
+        state = json.load(f)
 
-        III. Plot Outline
+    for i in range(state['num_chapters']):
+        if os.path.exists(f"{state['filename']}/chapter_summary_{i+1}.txt"):
+            with open(f"{state['filename']}/chapter_summary_{i+1}.txt", "r") as f:
+                state['chapter_summary_array'].append(f.read())
 
-        Act 1: Introductions and Conflict
-            A. Emma moves to Haven Bay for a fresh start and to mend her emotional wounds from a previous toxic relationship.
-            B. Jack, a local best-selling author, returns to Haven Bay to escape the pressures of fame and work on his new book.
-            C. Emma and Jack meet at a local art gallery and are instantly attracted to each other.
-            D. Layla, Emma's best friend, encourages her to take risks and explore her desires.
-            E. Jack and Emma's new relationship deepens and becomes more intimate, but their vulnerability brings their personal demons to the surface.
+    state['chapter_titles'] = []    
+    for chapter_summary in [state['chapter_summary_array'][-2], state['chapter_summary_array'][-1]]:
+        prompt = f"""
+        Given a plot summary of a chapter for a {state['plot_genre']} novel, create a creative title for the chapter.
+        Here is the summary. {chapter_summary}"""
+        response = ask_openai(prompt, 'writer', state['model']['name'], state['model']['token_limit'] - 2000, 0.9)
+        state['chapter_titles'].append(response.choices[0].message.content)
+        print('\n\n\n', state['chapter_titles'][-1])
+        import time
+        time.sleep(10)
 
-        Act 2: Complications
-            A. Jack's unresolved trauma causes him to push Emma away, while his fame attracts unwanted attention from other romantic interests.
-            B. Emma discovers she is pregnant and must decide whether to share this news with Jack, considering their rocky relationship.
-            C. Layla's own journey of self-discovery leads her to explore her sexuality, resulting in several steamy encounters with both new and familiar faces in Haven Bay.
-            D. Secrets from Emma's past are revealed, causing tension between her and Jack.
-            E. Jack's jealousy of Layla's relationship with Emma further complicates the trio's dynamic.
-
-        Act 3: Climax and Resolution
-            A. Emma and Jack confront their personal demons and address their individual traumas, attending therapy sessions and making strides in their mental health.
-            B. Jack receives an offer to leave Haven Bay for a prestigious writing opportunity, forcing him to choose between his career and his love for Emma.
-            C. Layla decides to follow her passion for photography and accept a job offer abroad.
-            D. Emma reveals her pregnancy to Jack, who struggles to reconcile his fear of commitment with his newfound love for Emma.
-            E. Jack decides to stay in Haven Bay, embracing the opportunity for a future with Emma and their child. The couple works together to overcome their personal challenges and build a strong and healthy relationship.
-
-        IV. Writing Style
-            - The writing style is fluid and easy to read with a conversational tone that includes introspection, descriptive language, and vivid imagery. The dialogue is authentic, natural, and well-balanced between humor, wit, and vulnerability. The themes of love, relationships, personal struggles, trauma, and mental health are explored with sensitivity and depth.
-        """
-        state['raw_outline'] = outline
-        state = state_populator(state)
-        state['chapter_by_chapter_summary_string'] = plot_summary_by_chapter(state)
-        sys.exit(0)
-        state['chapter_summary_array'] = chapter_summary_array(state)
-        state['full_text'] = page_generator(state)
-        output_to_file(False, state["page_summaries"], f"{state['filename']}/page_summaries.txt")
-    
-    else:
-        ### Check if given folder exists
-        state['filename'] = args.folder
-        if not os.path.exists(state['filename']):
-            print(f"Folder {state['filename']} does not exist")
-            sys.exit(1)
-
-        ### STATE
-        if args.start_with in ['chapter_by_chapter_summary_string', 'chapter_summary_array', 'page_summaries']:
-            with open(f"{state['filename']}/state.json", "r") as f:
-                print(f"Loading {state['filename']}/state.json")
-                state = json.load(f)
-        else:
-            state['raw_outline'] = outline_generator(state)
-            state = state_populator(state)
-  
-
-        ### CHAPTER BY CHAPTER SUMMARY STRING
-        if args.start_with in ['chapter_summary_array', 'page_summaries']:
-            with open(f"{state['filename']}/chapter_summary.txt", "r") as f:
-                print(f"Loading: Chapter By Chapter Summary")
-                state['chapter_by_chapter_summary_string'] = f.read()
-        else:
-            state['chapter_by_chapter_summary_string'] = plot_summary_by_chapter(state)
-
-
-        ### CHAPTER SUMMARY ARRAY
-        starting_chapter=0
-        if args.start_with in ['page_summaries']:
-            for i in range(state['num_chapters']):
-                if os.path.exists(f"{state['filename']}/chapter_summary_{i+1}.txt"):
-                    with open(f"{state['filename']}/chapter_summary_{i+1}.txt", "r") as f:
-                        print(f"Loading: Chapter {i+1}")
-                        state['chapter_summary_array'].append(f.read())
-                else:
-                    starting_chapter=i
-                    break
-        if len(state['chapter_summary_array']) != state['num_chapters']:
-            state['chapter_summary_array'] = chapter_summary_array(state, starting_chapter)
-
-
-        ### PAGE SUMMARIES:
-        # SINCE PAGE SUMMARIES IS LAST WE SHOULD ALWAYS DO IT
-        starting_chapter = 0
-        starting_page = 0
-        should_we_break_it = False
-        for chapter in range(state['num_chapters']):
-            for page in range(state['chapter_length']):
-                if os.path.exists(f"{state['filename']}/pages/chapter_{chapter+1}_page_{page+1}.txt"):
-                    # Load Pages
-                    with open(f"{state['filename']}/pages/chapter_{chapter+1}_page_{page+1}.txt", "r") as f:
-                        print(f"Loading: Chapter {chapter+1}, Page {page+1}")
-                        state['full_text'].append(f.read())
-                    # Load Summaries
-                    with open(f"{state['filename']}/page_summaries/summary_chapter_{chapter+1}_page_{page+1}.txt", "r") as f:
-                        print(f"Loading: Summary {chapter+1}, Page {page+1}")
-                        state['page_summaries'].append(f.read())
-                else:
-                    starting_chapter = chapter
-                    starting_page = page
-                    should_we_break_it = True
-                    break
-            if should_we_break_it:
-                break
-        state['full_text'], state['page_summaries'] = page_generator(state, starting_chapter, starting_page)
-
-
-    # 1. Identify what the main theme or plot of the novel is going to be
-    # 2. Brainstorm ideas for the main characters, their traits, and struggles.
-    # 3. Create a timeline for the novel, including significant events and developments that will take place.
-    # 4. Develop a setting for the novel, either real or imaginary.
-    # 5. Establish the main characters and their motivations.
-    # 6. Introduce the initial conflict and how it will be solved.
-    # 7. Develop sub-plots for the novel using the characters and their struggles.
-    # 8. Introduce necessary complications, such as other characters, that will further the story.
-    # 9. Describe the environments, scenery, and settings that the characters will interact with
-    # 10. Develop the climax of the novel and resolve the conflict
-    # 11. Describe the resolution of the novel, explaining how it all wraps up
-    # 12. Run the novel through Open AI and have it generate successive, non-repetitive chapters based on the initial input and timeline
+    print(state['chapter_titles'])
