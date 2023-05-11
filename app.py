@@ -107,10 +107,11 @@ def chapter_summary_array(state, starting_chapter=0):
         You are writing a summary of chapter {i+1} of a {state['num_chapters']} chapters {state['plot_genre']} book. 
         The entire plot summary is {state['plot_outline']} 
         The chapter-by-chapter summary for the entire book is: \n{state['chapter_by_chapter_summary_string']}\n 
-        Using those summaries, write a several page summary of only chapter {i+1}. Write the best summary you can, 
-        you may add new subplots, character development, character background, planned dialogue and plot development 
-        that you would typically find in such a work. You are NOT writing the actual book right now, you are writing 
-        an outline and summary of what will happen in this chapter. 
+        Using those summaries, write a several page summary of only chapter {i+1}. 
+        Be sure to explore themes such as love, relationships, personal struggles, trauma, and mental health with sensitivity and depth.
+        Develop an engaging and well-paced plot with suspense and unexpected twists that keep readers engaged.
+        The writing style should be fluid and easy to read. Adopt a conversational tone but also include introspection, descriptive language, and vivid imagery to enhance the storytelling.
+        You are NOT writing the actual book right now, you are writing an outline and summary of what will happen in this chapter. 
         You have to write {state['model']['token_limit'] - (500 + num_plot_outline_words + num_chapter_by_chapter_summary_words + state['pad_amount'])} words.`
         """
         
@@ -130,12 +131,12 @@ def page_generator(state, starting_chapter=0, starting_page=0):
             amendment = create_page_query_amendment(state, i, j);
             print(f"\nGenerating final full text for chapter {i+1} page {j+1}\n");
             page_gen_prompt = f"""
-                You are an author writing page {j+1} in chapter {i+1} of a {state['num_chapters']}-chapter {state['plot_genre']} 
+                You are Cooleen Hoover writing page {j+1} in chapter {i+1} of a {state['num_chapters']}-chapter {state['plot_genre']} 
                 novel. The plot summary for this chapter is {state['chapter_summary_array'][i]}. {amendment}. As you continue 
-                writing the next page, be sure to develop the characters' background thoroughly, include dialogue and detailed 
-                literary descriptions of the scenery, and develop the plot. Do not mention page or chapter numbers! Do not 
-                jump to the end of the plot and make sure there is plot continuity. Carefully read the summaries of the prior 
-                pages before writing new plot. Make sure you fill an entire page of writing.`
+                writing the next page, be sure to develop the characters' background thoroughly.The writing style should be fluid and easy to read. 
+                Adopt a conversational tone but also include introspection, descriptive language, and vivid imagery to enhance storytelling. 
+                Do not mention page or chapter numbers! Do not jump to the end of the plot and make sure there is plot continuity. Carefully 
+                read the summaries of the prior pages before writing new plot. Make sure you fill an entire page of writing.`
             """
             page_gen_text = ask_openai(page_gen_prompt, 'writer', state['model']['name'], (state['model']['token_limit'] - len(page_gen_prompt.split()) - state['pad_amount'] - 520), 0.9)
             page_gen_text = page_gen_text.choices[0].message.content
@@ -237,49 +238,11 @@ if __name__ == "__main__":
     }
     state['plot_genre'] = get_random_genre() if args.genre == '' else args.genre
     if not args.folder:
-        # state['raw_outline'] = outline_generator(state)
-        outline = """
-        I. Setting
-            - The story takes place in the picturesque coastal city of Haven Bay, known for its beautiful beaches, vibrant art scene, and quaint local shops.
-
-        II. Main Characters
-            1. Emma Thompson: A talented painter in her late 20s who is secretive about her past and struggles with trust.
-            2. Jack Reynolds: A charming and successful writer in his early 30s, who is dealing with unresolved trauma and commitment issues.
-            3. Layla Davis: A free-spirited and adventurous photographer and Emma's best friend, who is navigating her own journey of self-discovery.
-
-        III. Plot Outline
-
-        Act 1: Introductions and Conflict
-            A. Emma moves to Haven Bay for a fresh start and to mend her emotional wounds from a previous toxic relationship.
-            B. Jack, a local best-selling author, returns to Haven Bay to escape the pressures of fame and work on his new book.
-            C. Emma and Jack meet at a local art gallery and are instantly attracted to each other.
-            D. Layla, Emma's best friend, encourages her to take risks and explore her desires.
-            E. Jack and Emma's new relationship deepens and becomes more intimate, but their vulnerability brings their personal demons to the surface.
-
-        Act 2: Complications
-            A. Jack's unresolved trauma causes him to push Emma away, while his fame attracts unwanted attention from other romantic interests.
-            B. Emma discovers she is pregnant and must decide whether to share this news with Jack, considering their rocky relationship.
-            C. Layla's own journey of self-discovery leads her to explore her sexuality, resulting in several steamy encounters with both new and familiar faces in Haven Bay.
-            D. Secrets from Emma's past are revealed, causing tension between her and Jack.
-            E. Jack's jealousy of Layla's relationship with Emma further complicates the trio's dynamic.
-
-        Act 3: Climax and Resolution
-            A. Emma and Jack confront their personal demons and address their individual traumas, attending therapy sessions and making strides in their mental health.
-            B. Jack receives an offer to leave Haven Bay for a prestigious writing opportunity, forcing him to choose between his career and his love for Emma.
-            C. Layla decides to follow her passion for photography and accept a job offer abroad.
-            D. Emma reveals her pregnancy to Jack, who struggles to reconcile his fear of commitment with his newfound love for Emma.
-            E. Jack decides to stay in Haven Bay, embracing the opportunity for a future with Emma and their child. The couple works together to overcome their personal challenges and build a strong and healthy relationship.
-
-        IV. Writing Style
-            - The writing style is fluid and easy to read with a conversational tone that includes introspection, descriptive language, and vivid imagery. The dialogue is authentic, natural, and well-balanced between humor, wit, and vulnerability. The themes of love, relationships, personal struggles, trauma, and mental health are explored with sensitivity and depth.
-        """
-        state['raw_outline'] = outline
+        state['raw_outline'] = outline_generator(state)
         state = state_populator(state)
         state['chapter_by_chapter_summary_string'] = plot_summary_by_chapter(state)
-        sys.exit(0)
         state['chapter_summary_array'] = chapter_summary_array(state)
-        state['full_text'] = page_generator(state)
-        output_to_file(False, state["page_summaries"], f"{state['filename']}/page_summaries.txt")
+        state['full_text'], state['page_summaries'] = page_generator(state)
     
     else:
         ### Check if given folder exists
