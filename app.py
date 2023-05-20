@@ -34,16 +34,16 @@ def get_random_genre():
 
 def outline_generator(state):
     outline_prompt =  f"""
-        Generate the outline of an original {state['desired_pages']}-page erotic fiction novel. 
+        Generate the outline of an original {state['desired_pages']}-page erotic thriller in the style of Sadie Kincaid. 
         Imagine and then carefully label the following: a detailed plot, characters with names, settings 
-        and writing style. The writing style should be in the style of the author Cooleen Hoover. The plot 
-        should include lots of sexual interactions between many different characters. You have 
+        and writing style. The writing style should be in the style of the author Sadie Kincaid.
         {state['model']['token_limit'] - (40 + state['pad_amount'])} words remaining to write the outline. 
         It is CRITICAL you as many words as possible. DO NOT create a title!
         """
     print("Generating Outline...")
 
-    outline = ask_openai(outline_prompt, 'writer', state['model']['name'], (state['model']['token_limit'] - (40 + state['pad_amount'])), 0.9)
+    # outline = ask_openai(outline_prompt, 'writer', state['model']['name'], (state['model']['token_limit'] - (40 + state['pad_amount'])), 0.9)
+    outline = ask_anthropic(outline_prompt)
     print("Here is the raw outline:\n")
     print(outline)
     return outline
@@ -67,8 +67,8 @@ def state_populator(state):
             Here is the outline: {state['raw_outline']}`
         """
 
-        state_populator_result = ask_openai(state_populator_prompt, 'machine', state['model']['name'], (state['model']['token_limit'] - (len(state['raw_outline']) + state['pad_amount'])), 0.9)
-        
+        # state_populator_result = ask_openai(state_populator_prompt, 'machine', state['model']['name'], (state['model']['token_limit'] - (len(state['raw_outline']) + state['pad_amount'])), 0.9)
+        state_populator_result = ask_anthropic(state_populator_prompt)
         state[key] = state_populator_result
 
     state['filename'] = state['title']
@@ -91,7 +91,8 @@ def plot_summary_by_chapter(state):
         left for the summaries. Try to use all the words you have available. 
     """
 
-    chapter_summary_text = ask_openai(chapter_summary_prompt, 'writer', state['model']['name'], (state['model']['token_limit'] - (num_plot_outline_words + state['pad_amount'])), 0.9)
+    # chapter_summary_text = ask_openai(chapter_summary_prompt, 'writer', state['model']['name'], (state['model']['token_limit'] - (num_plot_outline_words + state['pad_amount'])), 0.9)
+    chapter_summary_text = ask_anthropic(chapter_summary_prompt)
     output_to_file(False, chapter_summary_text, f"{state['filename']}/{'chapter_summary.txt'}")
     
     return chapter_summary_text
@@ -118,7 +119,8 @@ def chapter_summary_array(state, starting_chapter=0):
         """
         
 
-        chapter_summary = ask_openai(chapter_summary_prompt, 'writer', state['model']['name'], (state['model']['token_limit'] - (num_plot_outline_words + num_chapter_by_chapter_summary_words + state['pad_amount'])), 0.9)
+        # chapter_summary = ask_openai(chapter_summary_prompt, 'writer', state['model']['name'], (state['model']['token_limit'] - (num_plot_outline_words + num_chapter_by_chapter_summary_words + state['pad_amount'])), 0.9)
+        chapter_summary = ask_anthropic(chapter_summary_prompt)
         state['chapter_summary_array'].append(chapter_summary)
         output_to_file(False, chapter_summary, f"{state['filename']}/{'chapter_summary_'}{i + 1}.txt")
     
@@ -138,8 +140,8 @@ def page_generator(state, starting_chapter=0, starting_page=0):
                 Do not mention page or chapter numbers! Do not jump to the end of the plot and make sure there is plot continuity. Carefully 
                 read the summaries of the prior pages before writing new plot. Make sure you fill an entire page of writing.`
             """
-            page_gen_text = ask_openai(page_gen_prompt, 'writer', state['model']['name'], (state['model']['token_limit'] - len(page_gen_prompt.split()) - state['pad_amount'] - 520), 0.9)
-            # page_gen_text = ask_anthropic(page_gen_prompt)
+            # page_gen_text = ask_openai(page_gen_prompt, 'writer', state['model']['name'], (state['model']['token_limit'] - len(page_gen_prompt.split()) - state['pad_amount'] - 520), 0.9)
+            page_gen_text = ask_anthropic(page_gen_prompt)
             state['full_text'].append(page_gen_text)
             header = f"\n\nChapter {i+1}, Page {j+1}\n\n"
             text_to_save = header + page_gen_text
@@ -158,7 +160,8 @@ def generate_page_summary(page):
         Here is a full page of text. Please summarize it in a few sentences. 
         Text to summarize: ${page}
         """
-    page_summary = ask_openai(page_summary_prompt, 'writer', state['model']['name'], (state['model']['token_limit'] - (len(page.strip()) + state['pad_amount'])), 0.5)
+    # page_summary = ask_openai(page_summary_prompt, 'writer', state['model']['name'], (state['model']['token_limit'] - (len(page.strip()) + state['pad_amount'])), 0.5)
+    page_summary = ask_anthropic(page_summary_prompt)
     return page_summary
 
 def create_page_query_amendment(state, chapter, page):
