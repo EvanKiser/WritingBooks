@@ -28,4 +28,4 @@ def ask_openai(prompt, role, model_choice='gpt-3.5-turbo', tokens=5000, temp=0.8
         max_tokens=tokens,
     )
     print(f"OpenAI Response Time: {datetime.now() - now} ms")
-    return response
+    return response.choices[0].message.content

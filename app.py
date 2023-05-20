@@ -7,11 +7,18 @@ import openai
 import random
 
 from ask_openai import ask_openai
+from ask_anthropic import ask_anthropic
 from GenresList import GENRES_LIST
 
 load_dotenv()
 # Set up OpenAI API credentials
 openai.api_key = os.getenv('OPENAI_SECRET_KEY')
+
+# def ask_the_model(prompt, state, part=''):
+#     if state['model']['name'] != 'anthropic':
+#         return ask_openai(prompt, 'writer', state['model']['name'], (state['model']['token_limit'] - (40 + state['pad_amount'])), 0.9)
+#     else:
+#         return ask_anthropic(prompt)
 
 def output_to_file(is_dict, content, filename):
     with open(filename, "w") as f:
@@ -37,8 +44,6 @@ def outline_generator(state):
     print("Generating Outline...")
 
     outline = ask_openai(outline_prompt, 'writer', state['model']['name'], (state['model']['token_limit'] - (40 + state['pad_amount'])), 0.9)
-
-    outline = outline.choices[0].message.content
     print("Here is the raw outline:\n")
     print(outline)
     return outline
@@ -63,7 +68,6 @@ def state_populator(state):
         """
 
         state_populator_result = ask_openai(state_populator_prompt, 'machine', state['model']['name'], (state['model']['token_limit'] - (len(state['raw_outline']) + state['pad_amount'])), 0.9)
-        state_populator_result = state_populator_result.choices[0].message.content;
         
         state[key] = state_populator_result
 
@@ -88,8 +92,6 @@ def plot_summary_by_chapter(state):
     """
 
     chapter_summary_text = ask_openai(chapter_summary_prompt, 'writer', state['model']['name'], (state['model']['token_limit'] - (num_plot_outline_words + state['pad_amount'])), 0.9)
-    chapter_summary_text = chapter_summary_text.choices[0].message.content
-    # chapterSummaryText = chapterSummaryText.split(/\n/).filter((x) => x.length > 5);
     output_to_file(False, chapter_summary_text, f"{state['filename']}/{'chapter_summary.txt'}")
     
     return chapter_summary_text
@@ -117,9 +119,7 @@ def chapter_summary_array(state, starting_chapter=0):
         
 
         chapter_summary = ask_openai(chapter_summary_prompt, 'writer', state['model']['name'], (state['model']['token_limit'] - (num_plot_outline_words + num_chapter_by_chapter_summary_words + state['pad_amount'])), 0.9)
-        chapter_summary = chapter_summary.choices[0].message.content
         state['chapter_summary_array'].append(chapter_summary)
-        # chapterSummary = chapterSummary.split(/\n/).filter((x) => x.length > 5);
         output_to_file(False, chapter_summary, f"{state['filename']}/{'chapter_summary_'}{i + 1}.txt")
     
     return state['chapter_summary_array']    
@@ -139,7 +139,7 @@ def page_generator(state, starting_chapter=0, starting_page=0):
                 read the summaries of the prior pages before writing new plot. Make sure you fill an entire page of writing.`
             """
             page_gen_text = ask_openai(page_gen_prompt, 'writer', state['model']['name'], (state['model']['token_limit'] - len(page_gen_prompt.split()) - state['pad_amount'] - 520), 0.9)
-            page_gen_text = page_gen_text.choices[0].message.content
+            # page_gen_text = ask_anthropic(page_gen_prompt)
             state['full_text'].append(page_gen_text)
             header = f"\n\nChapter {i+1}, Page {j+1}\n\n"
             text_to_save = header + page_gen_text
@@ -159,7 +159,6 @@ def generate_page_summary(page):
         Text to summarize: ${page}
         """
     page_summary = ask_openai(page_summary_prompt, 'writer', state['model']['name'], (state['model']['token_limit'] - (len(page.strip()) + state['pad_amount'])), 0.5)
-    page_summary = page_summary.choices[0].message.content
     return page_summary
 
 def create_page_query_amendment(state, chapter, page):
@@ -212,7 +211,11 @@ if __name__ == "__main__":
         'gpt4': {
             'name': 'gpt-4-0314',
             'token_limit': 8000,
-        } 
+        },
+        'anthropic': {
+            'name': 'anthropic',
+            'token_limit': 100000,
+        }
     }
 
     state = {
