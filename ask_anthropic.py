@@ -8,8 +8,6 @@ load_dotenv()
 client = anthropic.Client(os.getenv('ANTHROPIC_SECRET_KEY'))
 def ask_anthropic(prompt):
     now = datetime.now()
-    print(prompt)
-    print(now)
     response = client.completion(
         prompt=f"{anthropic.HUMAN_PROMPT} {prompt} {anthropic.AI_PROMPT}",
         stop_sequences = [anthropic.HUMAN_PROMPT],
@@ -17,5 +15,5 @@ def ask_anthropic(prompt):
         max_tokens_to_sample=5000,
     )
     print(f"Anthropic Response Time: {datetime.now() - now} ms")
-    print(response)
+    print(response['completion'])
     return response['completion']
